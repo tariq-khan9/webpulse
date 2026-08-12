@@ -1,0 +1,10 @@
+{
+  "name": "webpulse",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @webpulse/web dev",
+    "dev:worker": "pnpm --filter @webpulse/worker dev",
+    "build": "pnpm --filter @webpulse/shared build && pnpm -r build"
+  }
+}
