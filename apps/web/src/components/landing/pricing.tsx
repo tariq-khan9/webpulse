@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SectionHeading } from "@/components/section-heading";
+import { SectionHeading } from "@/components/landing/section-heading";
 
 const plans = [
   {

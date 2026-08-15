@@ -53,7 +53,7 @@ export default function RootLayout({
       lang="en"
       className={`dark bg-background ${inter.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased ">{children}</body>
     </html>
   );
 }

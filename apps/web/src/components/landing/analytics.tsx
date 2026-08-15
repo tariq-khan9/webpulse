@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Activity, Gauge, Clock, TriangleAlert } from "lucide-react";
-import { LineChart, UptimeBars } from "@/components/charts";
-import { SectionHeading } from "@/components/section-heading";
+import { LineChart, UptimeBars } from "@/components/landing/charts";
+import { SectionHeading } from "@/components/landing/section-heading";
 
 type RangeKey = "24h" | "7d" | "30d" | "90d";
 

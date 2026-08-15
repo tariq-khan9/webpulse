@@ -6,7 +6,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
-import { LineChart, UptimeBars } from "@/components/charts";
+import { LineChart, UptimeBars } from "@/components/landing/charts";
 
 const stats = [
   {
