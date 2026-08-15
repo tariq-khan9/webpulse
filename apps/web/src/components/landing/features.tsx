@@ -5,8 +5,8 @@ import {
   Globe,
   Server,
 } from "lucide-react";
-import { LineChart } from "@/components/charts";
-import { SectionHeading } from "@/components/section-heading";
+import { LineChart } from "@/components/landing/charts";
+import { SectionHeading } from "@/components/landing/section-heading";
 
 function CardShell({
   className,

@@ -1,5 +1,5 @@
 import { Check, Timer, Signal, Gauge, Zap, Settings2 } from "lucide-react";
-import { LineChart } from "@/components/charts";
+import { LineChart } from "@/components/landing/charts";
 
 const benefits = [
   { icon: Timer, text: "Custom monitoring intervals" },

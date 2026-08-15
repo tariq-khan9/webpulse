@@ -1,6 +1,6 @@
 import { CircleCheck } from "lucide-react";
-import { UptimeBars } from "@/components/charts";
-import { SectionHeading } from "@/components/section-heading";
+import { UptimeBars } from "@/components/landing/charts";
+import { SectionHeading } from "@/components/landing/section-heading";
 import { Logo } from "@/components/logo";
 
 const services = [

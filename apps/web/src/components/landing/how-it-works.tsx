@@ -1,5 +1,5 @@
 import { Plus, Timer, BellRing } from "lucide-react";
-import { SectionHeading } from "@/components/section-heading";
+import { SectionHeading } from "@/components/landing/section-heading";
 
 const steps = [
   {
