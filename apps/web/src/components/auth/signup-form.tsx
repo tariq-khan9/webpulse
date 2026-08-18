@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signUpAction } from "@/app/auth/(signup-login)/signup/action";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -65,9 +66,12 @@ export function SignUpForm() {
   async function onSubmit(values: FormValues) {
     setFormError(null);
     try {
-      // TODO: replace with your real registration endpoint / server action,
-      // e.g. await fetch("/api/auth/register", { method: "POST", body: JSON.stringify(values) })
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const result = await signUpAction({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+      });
+      console.log("user created ", result);
     } catch {
       setFormError("Something went wrong. Try again.");
     }

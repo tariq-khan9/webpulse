@@ -10,6 +10,7 @@ import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoginAction } from "@/app/auth/(signup-login)/login/action";
 
 // Schema replaces the old `validate()` function. Messages are kept
 // identical to the original hand-written checks.
@@ -43,11 +44,12 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: FormValues) {
-    setFormError(null);
     try {
-      // TODO: replace with your real registration endpoint / server action,
-      // e.g. await fetch("/api/auth/register", { method: "POST", body: JSON.stringify(values) })
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const result = await LoginAction({
+        email: values.email,
+        password: values.password,
+      });
+      console.log("user logged in ", result);
     } catch {
       setFormError("Something went wrong. Try again.");
     }
