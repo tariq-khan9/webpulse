@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams, origin, search } = new URL(request.url);
 
   const code = searchParams.get("code");
   const errorCode = searchParams.get("error_code");
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   // Handle other authentication errors
   if (errorCode) {
-    return NextResponse.redirect(`${origin}/email-error`);
+    return NextResponse.redirect(`${origin}/auth/message${search}`);
   }
 
   // Exchange the confirmation code for a session
@@ -38,5 +38,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/email-error`);
+  return NextResponse.redirect(`${origin}/auth/message${search}`);
 }
