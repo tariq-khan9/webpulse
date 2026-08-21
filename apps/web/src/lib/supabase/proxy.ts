@@ -4,9 +4,9 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   const errorCode = request.nextUrl.searchParams.get("error_code");
 
-  if (errorCode && request.nextUrl.pathname !== "/auth/email-error") {
+  if (errorCode && request.nextUrl.pathname !== "/auth/message") {
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/email-error";
+    url.pathname = "/auth/message";
     return NextResponse.redirect(url);
   }
 
@@ -60,7 +60,7 @@ export async function updateSession(request: NextRequest) {
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }
 

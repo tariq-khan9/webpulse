@@ -31,5 +31,5 @@ export async function signUpAction({
     return { success: false, error: error.message };
   }
 
-  redirect("/check-email");
+  redirect("/auth/message?webpulse=notify&notification_code=signup-confirmation-sent");
 }
