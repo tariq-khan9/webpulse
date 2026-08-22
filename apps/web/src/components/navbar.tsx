@@ -52,7 +52,7 @@ export function Navbar() {
             variant="ghost"
             size="lg"
             nativeButton={false}
-            render={<a href="#" />}
+            render={<a href="/auth/login" />}
           >
             Sign In
           </Button>
@@ -98,7 +98,7 @@ export function Navbar() {
               variant="outline"
               size="lg"
               nativeButton={false}
-              render={<a href="#" />}
+              render={<a href="/auth/login" />}
             >
               Sign In
             </Button>

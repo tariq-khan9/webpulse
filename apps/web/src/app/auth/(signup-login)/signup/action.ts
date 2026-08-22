@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
 type SignUpInput = {
   name: string;
@@ -31,5 +30,5 @@ export async function signUpAction({
     return { success: false, error: error.message };
   }
 
-  redirect("/auth/message?webpulse=notify&notification_code=signup-confirmation-sent");
+  return { success: true };
 }

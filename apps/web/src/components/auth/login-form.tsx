@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const loginSchema = z.object({
 type FormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const router = useRouter();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -44,12 +46,17 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: FormValues) {
+    setFormError(null);
     try {
       const result = await LoginAction({
         email: values.email,
         password: values.password,
       });
-      console.log("user logged in ", result);
+      if (result.success) {
+        router.push("/dashboard");
+      } else {
+        setFormError(result.error);
+      }
     } catch {
       setFormError("Something went wrong. Try again.");
     }
@@ -116,12 +123,20 @@ export function LoginForm() {
           </div>
 
           <div className="space-y-1.5">
-            <Label
-              htmlFor="password"
-              className="text-sm font-medium text-slate-300"
-            >
-              Password
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-slate-300"
+              >
+                Password
+              </Label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-xs font-medium text-indigo-400 hover:text-indigo-300"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Input
                 id="password"
@@ -199,7 +214,7 @@ export function LoginForm() {
         <p className="mt-7 text-center text-sm text-slate-400">
           Don't have an account?{" "}
           <Link
-            href="/sign-in"
+            href="/auth/signup"
             className="font-medium text-indigo-400 hover:text-indigo-300"
           >
             Sign Up

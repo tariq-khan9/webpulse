@@ -2,6 +2,8 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/logo";
+import { logoutAction } from "@/app/auth/logout/action";
+import { ProfileForm } from "@/components/dashboard/profile-form";
 
 const Page = async () => {
   const supabase = await createClient();
@@ -11,10 +13,24 @@ const Page = async () => {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/sign-in");
+    redirect("/auth/login");
   }
+
+  const currentName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : "";
+
   return (
-    <div className="flex min-h-screen bg-[#070b14]">
+    <div className="relative flex min-h-screen bg-[#070b14]">
+      <form action={logoutAction} className="absolute right-6 top-6 z-20">
+        <button
+          type="submit"
+          className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
+        >
+          Sign out
+        </button>
+      </form>
       {/* Branding panel — hidden below lg, shown as a fixed side panel on desktop */}
       <aside className="relative hidden lg:pl-12 w-[44%] shrink-0 overflow-hidden border-r border-white/10 bg-[#0a0e17] lg:flex lg:flex-col lg:justify-between">
         <div
@@ -83,6 +99,10 @@ const Page = async () => {
           </div>
         </div>
       </aside>
+
+      <main className="flex flex-1 items-center justify-center px-6 py-16 sm:px-10">
+        <ProfileForm currentName={currentName} />
+      </main>
     </div>
   );
 };
