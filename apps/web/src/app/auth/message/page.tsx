@@ -3,16 +3,16 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CircleCheck, CircleX, TriangleAlert } from "lucide-react";
+import { CircleCheck, Info, TriangleAlert } from "lucide-react";
 
 import { authMessages, type AuthMessageType } from "@/lib/auth-messages";
 import { ResendConfirmationDialog } from "@/components/dialogs/resend-email-dialog";
 
 const primaryButtonClass =
-  "inline-flex h-11 items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 px-6 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:from-blue-400 hover:to-violet-400";
+  "inline-flex h-11 w-full items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 px-6 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:from-blue-400 hover:to-violet-400";
 
 const secondaryButtonClass =
-  "inline-flex h-11 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-6 text-sm font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white";
+  "inline-flex h-11 w-full items-center justify-center rounded-lg border border-indigo-400/40 bg-indigo-500/5 px-6 text-sm font-medium text-slate-200 transition hover:border-indigo-400/60 hover:bg-indigo-500/10 hover:text-white";
 
 function resolveMessageType(
   searchParams: URLSearchParams,
@@ -58,13 +58,15 @@ function AuthMessageContent() {
   const type = resolveMessageType(searchParams);
   const message = authMessages[type];
   const isLinkExpired = type === "link-expired";
+  const isRecoveryFlow = searchParams.get("flow") === "recovery";
+  const showResendTrigger = isLinkExpired || type === "signup-confirmation-sent";
 
   const Icon =
     message.variant === "success"
       ? CircleCheck
       : message.variant === "error"
         ? TriangleAlert
-        : CircleX;
+        : Info;
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070d1a] px-4 py-20">
@@ -112,25 +114,30 @@ function AuthMessageContent() {
           </div>
 
           {/* Actions */}
-          {(message.primaryAction || message.secondaryAction || isLinkExpired) && (
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              {isLinkExpired && (
-                <button
-                  type="button"
-                  onClick={() => setResendOpen(true)}
-                  className={primaryButtonClass}
-                >
-                  Resend confirmation email
-                </button>
-              )}
+          {(message.primaryAction || message.secondaryAction || showResendTrigger) && (
+            <div className="mx-auto mt-8 flex w-full max-w-sm flex-col gap-3">
+              {showResendTrigger &&
+                (isLinkExpired && isRecoveryFlow ? (
+                  <Link href="/auth/forgot-password" className={primaryButtonClass}>
+                    Request new link
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setResendOpen(true)}
+                    className={primaryButtonClass}
+                  >
+                    Resend confirmation email
+                  </button>
+                ))}
 
               {message.primaryAction && (
                 <Link
                   href={message.primaryAction.href}
-                  className={isLinkExpired ? secondaryButtonClass : primaryButtonClass}
+                  className={showResendTrigger ? secondaryButtonClass : primaryButtonClass}
                 >
                   {message.primaryAction.label}
-                  {!isLinkExpired && <span className="ml-2">→</span>}
+                  {!showResendTrigger && <span className="ml-2">→</span>}
                 </Link>
               )}
 

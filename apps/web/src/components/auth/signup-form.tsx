@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signUpAction } from "@/app/auth/(signup-login)/signup/action";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,6 +37,7 @@ const signupSchema = z
 type FormValues = z.infer<typeof signupSchema>;
 
 export function SignUpForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -71,7 +73,13 @@ export function SignUpForm() {
         email: values.email,
         password: values.password,
       });
-      console.log("user created ", result);
+      if (result.success) {
+        router.push(
+          "/auth/message?webpulse=notify&notification_code=signup-confirmation-sent",
+        );
+      } else {
+        setFormError(result.error);
+      }
     } catch {
       setFormError("Something went wrong. Try again.");
     }
@@ -285,7 +293,7 @@ export function SignUpForm() {
         <p className="mt-7 text-center text-sm text-slate-400">
           Already have an account?{" "}
           <Link
-            href="/sign-in"
+            href="/auth/login"
             className="font-medium text-indigo-400 hover:text-indigo-300"
           >
             Sign in

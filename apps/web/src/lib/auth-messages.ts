@@ -46,8 +46,8 @@ export const authMessages: Record<AuthMessageType, AuthMessageConfig> = {
     title: "Check your inbox",
     description:
       "We've sent a confirmation link to your email. Click it to activate your account.",
-    variant: "info",
-    secondaryAction: { label: "Resend email", href: "/auth/resend" },
+    variant: "success",
+    primaryAction: { label: "Back to login", href: "/auth/login" },
   },
   "email-confirmed": {
     title: "Email confirmed",
@@ -65,7 +65,7 @@ export const authMessages: Record<AuthMessageType, AuthMessageConfig> = {
     title: "Email resent",
     description:
       "We've sent another confirmation link. Please check your inbox.",
-    variant: "info",
+    variant: "success",
     primaryAction: { label: "Back to login", href: "/auth/login" },
   },
 
@@ -74,7 +74,8 @@ export const authMessages: Record<AuthMessageType, AuthMessageConfig> = {
     title: "Reset link sent",
     description:
       "If an account exists with that email, you'll receive a password reset link shortly.",
-    variant: "info",
+    variant: "success",
+    primaryAction: { label: "Back to login", href: "/auth/login" },
   },
   "password-reset-success": {
     title: "Password updated",
@@ -87,7 +88,7 @@ export const authMessages: Record<AuthMessageType, AuthMessageConfig> = {
   "email-change-sent": {
     title: "Confirm your new email",
     description: "We've sent a confirmation link to your new email address.",
-    variant: "info",
+    variant: "success",
   },
   "email-change-confirmed": {
     title: "Email updated",
@@ -149,6 +150,7 @@ export const authMessages: Record<AuthMessageType, AuthMessageConfig> = {
     description: "You've been signed out successfully.",
     variant: "success",
     primaryAction: { label: "Sign in again", href: "/auth/login" },
+    secondaryAction: { label: "Home", href: "/" },
   },
 
   // ---------- Fallback ----------
