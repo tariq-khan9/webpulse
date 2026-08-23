@@ -45,6 +45,17 @@ export async function updateProfilePasswordAction({
     return { success: false, error: "You must be signed in to do this." };
   }
 
+  const hasPasswordLogin = user.identities?.some(
+    (identity) => identity.provider === "email",
+  );
+
+  if (!hasPasswordLogin) {
+    return {
+      success: false,
+      error: "Your account signs in with Google and has no password to change.",
+    };
+  }
+
   const { error: verifyError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword,

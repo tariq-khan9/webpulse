@@ -58,11 +58,29 @@ function useAutoDismiss(active: boolean, onDismiss: () => void) {
   }, [active]);
 }
 
-export function ProfileForm({ currentName }: { currentName: string }) {
+export function ProfileForm({
+  currentName,
+  hasPasswordLogin,
+}: {
+  currentName: string;
+  hasPasswordLogin: boolean;
+}) {
   return (
     <div className="w-full max-w-md space-y-6">
       <NameSection currentName={currentName} />
-      <PasswordSection />
+      {hasPasswordLogin ? <PasswordSection /> : <GoogleAccountNotice />}
+    </div>
+  );
+}
+
+function GoogleAccountNotice() {
+  return (
+    <div className={cardClass}>
+      <h2 className="text-lg font-semibold text-white">Password</h2>
+      <p className="mt-1 text-sm text-slate-400">
+        You sign in with Google, so there&apos;s no WebPulse password to change.
+        Manage your password from your Google account.
+      </p>
     </div>
   );
 }

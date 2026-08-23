@@ -11,7 +11,7 @@ import { Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { forgotPasswordAction } from "@/app/auth/(signup-login)/forgot-password/action";
+import { forgotPasswordAction } from "@/app/auth/(simple)/forgot-password/action";
 
 const forgotPasswordSchema = z.object({
   email: z

@@ -7,9 +7,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-[#070b14]">
+    <div className="flex min-h-screen bg-background">
       {/* Branding panel — hidden below lg, shown as a fixed side panel on desktop */}
-      <aside className="relative hidden lg:pl-12 w-[44%] shrink-0 overflow-hidden border-r border-white/10 bg-[#0a0e17] lg:flex lg:flex-col lg:justify-between">
+      <aside className="relative hidden lg:pl-12 w-[44%] shrink-0 overflow-hidden border-r border-border bg-card lg:flex lg:flex-col lg:justify-between">
         <div
           className="pointer-events-none absolute -left-32 -top-32 h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-[110px]"
           aria-hidden
