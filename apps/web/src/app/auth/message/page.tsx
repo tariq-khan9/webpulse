@@ -7,6 +7,7 @@ import { CircleCheck, Info, TriangleAlert } from "lucide-react";
 
 import { authMessages, type AuthMessageType } from "@/lib/auth-messages";
 import { ResendConfirmationDialog } from "@/components/dialogs/resend-email-dialog";
+import { AuthBackground } from "@/components/auth/auth-background";
 
 const primaryButtonClass =
   "inline-flex h-11 w-full items-center justify-center rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 px-6 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:from-blue-400 hover:to-violet-400";
@@ -40,6 +41,14 @@ function resolveMessageType(
     return "link-expired";
   }
 
+  // Failed Google sign-in, tagged by GoogleButton's `flow=oauth` redirect.
+  // Reaching /auth/message at all means it failed — success goes to /dashboard.
+  if (searchParams.get("flow") === "oauth") {
+    return searchParams.get("error") === "access_denied"
+      ? "oauth-cancelled"
+      : "oauth-error";
+  }
+
   return "auth-error";
 }
 
@@ -69,29 +78,7 @@ function AuthMessageContent() {
         : Info;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070d1a] px-4 py-20">
-      {/* Background grid */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{
-          backgroundImage: `
-            linear-gradient(
-              rgba(99, 102, 241, 0.08) 1px,
-              transparent 1px
-            ),
-            linear-gradient(
-              90deg,
-              rgba(99, 102, 241, 0.08) 1px,
-              transparent 1px
-            )
-          `,
-          backgroundSize: "56px 56px",
-        }}
-      />
-
-      {/* Blue / purple glow */}
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/10 blur-[140px]" />
-
+    <AuthBackground>
       <div className="relative w-full max-w-lg">
         {/* Message card */}
         <div className="rounded-2xl border border-white/10 bg-[#0b1324]/90 p-8 shadow-2xl shadow-black/30 backdrop-blur-xl sm:p-10">
@@ -159,6 +146,6 @@ function AuthMessageContent() {
       </div>
 
       <ResendConfirmationDialog open={resendOpen} onOpenChange={setResendOpen} />
-    </main>
+    </AuthBackground>
   );
 }
