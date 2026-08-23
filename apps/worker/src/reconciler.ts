@@ -1,12 +1,12 @@
 //apps/worker/src/reconciler.ts
-import { monitorJobSchedulerId } from "@webpulse/shared";
+import { monitorJobSchedulerId, upsertMonitorScheduler } from "@webpulse/shared";
 import { logger } from "./logger.js";
 import { getActiveMonitors } from "./monitors.js";
 import { checkQueue } from "./queue.js";
 
 interface ExpectedScheduler {
   monitorId: string;
-  intervalMs: number;
+  intervalSeconds: number;
 }
 
 // Bring Redis in line with Postgres. Postgres decides what should be
@@ -22,7 +22,7 @@ export async function reconcileSchedulers(): Promise<void> {
   for (const monitor of monitors) {
     expected.set(monitorJobSchedulerId(monitor.id), {
       monitorId: monitor.id,
-      intervalMs: monitor.checkIntervalSeconds * 1000,
+      intervalSeconds: monitor.checkIntervalSeconds,
     });
   }
 
@@ -35,30 +35,18 @@ export async function reconcileSchedulers(): Promise<void> {
     // Monitor was deleted or paused while this scheduler stayed behind.
     await checkQueue.removeJobScheduler(scheduler.key);
     removed++;
+
   }
 
   const currentIntervals = new Map(existing.map((s) => [s.key, s.every]));
 
   let upserted = 0;
-  for (const [schedulerId, { monitorId, intervalMs }] of expected) {
+  for (const [schedulerId, { monitorId, intervalSeconds }] of expected) {
     // Only write on a real difference. Re-upserting an unchanged scheduler
     // would reset its next fire time on every hourly run.
-    if (currentIntervals.get(schedulerId) === intervalMs) continue;
+    if (currentIntervals.get(schedulerId) === intervalSeconds * 1000) continue;
 
-    await checkQueue.upsertJobScheduler(
-      schedulerId,
-      { every: intervalMs },
-      {
-        name: "check",
-        data: { monitorId },
-        opts: {
-          // Completed jobs are dead weight: the real output goes to Postgres
-          // and the Redis status key. Recent failures are kept for debugging.
-          removeOnComplete: true,
-          removeOnFail: { count: 100 },
-        },
-      },
-    );
+    await upsertMonitorScheduler(checkQueue, monitorId, intervalSeconds);
     upserted++;
   }
 

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   updateProfileNameAction,
   updateProfilePasswordAction,
-} from "@/app/(dashboard)/dashboard/profile-actions";
+} from "@/app/(dashboard)/dashboard/profile/profile-actions";
 
 const nameSchema = z.object({
   name: z.string().trim().min(1, "Enter your full name."),

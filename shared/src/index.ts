@@ -3,4 +3,5 @@ export * from "./types.js";
 export * from "./redis.js";
 export * from "./queue.js";
 export * from "./metrics.js";
+export * from "./url-guard.js";
 export type { Database } from "./supabase-types.js";

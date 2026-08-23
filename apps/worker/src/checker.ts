@@ -1,6 +1,5 @@
 //apps/worker/src/checker.ts
-import type { MonitorStatus } from "@webpulse/shared";
-import { assertSafeUrl, UnsafeUrlError } from "./url-guard.js";
+import { assertSafeUrl, type MonitorStatus, UnsafeUrlError } from "@webpulse/shared";
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = [1000, 2000];
