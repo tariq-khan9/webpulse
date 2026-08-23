@@ -1,15 +1,17 @@
 //apps/worker/src/index.ts
-import { createRedisConnection } from "@webpulse/shared";
-import { config } from "./config.js";
+import { checkConsumer } from "./consumer.js";
 import { logger } from "./logger.js";
+import { checkQueue } from "./queue.js";
+import { reconcileSchedulers } from "./reconciler.js";
+import { queueConnection, workerConnection } from "./redis.js";
 import { supabase } from "./supabase.js";
 
-const redis = createRedisConnection(config.redisUrl);
+const RECONCILE_INTERVAL_MS = 60 * 60 * 1000;
 
 // Prove both dependencies actually work at boot, so the worker never sits
 // there looking healthy while every job would fail.
 async function verifyConnections(): Promise<void> {
-  await redis.ping();
+  await queueConnection.ping();
   logger.info("Redis connection ok");
 
   const { error } = await supabase.from("monitors").select("id").limit(1);
@@ -19,8 +21,35 @@ async function verifyConnections(): Promise<void> {
   logger.info("Supabase connection ok");
 }
 
+// A failed reconcile is never fatal: the schedulers already in Redis keep
+// firing, and the next run picks up whatever drifted.
+async function safeReconcile(): Promise<void> {
+  try {
+    await reconcileSchedulers();
+  } catch (error) {
+    logger.error("Scheduler reconcile failed", { error: String(error) });
+  }
+}
+
+async function shutdown(reconcileTimer: NodeJS.Timeout): Promise<void> {
+  clearInterval(reconcileTimer);
+
+  try {
+    // Close the consumer first so in-flight checks can finish before the
+    // connections they depend on go away.
+    await checkConsumer.close();
+    await checkQueue.close();
+    await queueConnection.quit();
+    await workerConnection.quit();
+  } catch (error) {
+    logger.error("Error during shutdown", { error: String(error) });
+  }
+
+  process.exit(0);
+}
+
 // PM2 sends SIGTERM on every restart and deploy.
-function registerShutdown(): void {
+function registerShutdown(reconcileTimer: NodeJS.Timeout): void {
   let shuttingDown = false;
 
   for (const signal of ["SIGTERM", "SIGINT"] as const) {
@@ -29,10 +58,7 @@ function registerShutdown(): void {
       shuttingDown = true;
 
       logger.info("Shutting down", { signal });
-      redis
-        .quit()
-        .catch(() => redis.disconnect())
-        .finally(() => process.exit(0));
+      void shutdown(reconcileTimer);
     });
   }
 }
@@ -40,7 +66,11 @@ function registerShutdown(): void {
 async function main(): Promise<void> {
   logger.info("Worker starting");
   await verifyConnections();
-  registerShutdown();
+  await safeReconcile();
+
+  const reconcileTimer = setInterval(() => void safeReconcile(), RECONCILE_INTERVAL_MS);
+
+  registerShutdown(reconcileTimer);
   logger.info("Worker ready");
 }
 

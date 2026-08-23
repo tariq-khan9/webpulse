@@ -240,7 +240,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_check_result: {
+        Args: {
+          p_checked_at: string
+          p_error_message?: string
+          p_monitor_id: string
+          p_status: string
+          p_status_code?: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
