@@ -2,10 +2,14 @@
   "name": "@webpulse/shared",
   "private": true,
   "version": "1.0.0",
-  "main": "./dist/types.js",
-  "types": "./dist/types.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc"
+  },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
