@@ -1,13 +1,12 @@
 //apps/worker/src/consumer.ts
 import { Worker } from "bullmq";
-import { CHECK_QUEUE_NAME, type CheckJobPayload } from "@webpulse/shared";
+import { CHECK_QUEUE_NAME, type CheckJobPayload, UnsafeUrlError } from "@webpulse/shared";
 import { sendAlert } from "./alerts.js";
 import { runCheck } from "./checker.js";
 import { logger } from "./logger.js";
 import { getMonitorById } from "./monitors.js";
 import { workerConnection } from "./redis.js";
 import { recordCheckResult } from "./state.js";
-import { UnsafeUrlError } from "./url-guard.js";
 
 // Checks are IO-bound — almost all of the time is spent waiting on the
 // network — so a modest concurrency keeps throughput up without competing

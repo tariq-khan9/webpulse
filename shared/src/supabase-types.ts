@@ -250,6 +250,10 @@ export type Database = {
         }
         Returns: Json
       }
+      set_monitor_paused: {
+        Args: { p_monitor_id: string; p_paused: boolean }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

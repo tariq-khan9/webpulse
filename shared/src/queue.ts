@@ -15,3 +15,33 @@ export function monitorJobSchedulerId(monitorId: string): string {
 export function createCheckQueue(connection: IORedis): Queue<CheckJobPayload> {
   return new Queue<CheckJobPayload>(CHECK_QUEUE_NAME, { connection });
 }
+
+// Both the worker's reconciler and web's monitor actions go through these, so
+// a scheduler created from either side is identical. Completed jobs are
+// removed because the real output lives in Postgres and the Redis status key;
+// recent failures are kept for debugging.
+export async function upsertMonitorScheduler(
+  queue: Queue<CheckJobPayload>,
+  monitorId: string,
+  intervalSeconds: number,
+): Promise<void> {
+  await queue.upsertJobScheduler(
+    monitorJobSchedulerId(monitorId),
+    { every: intervalSeconds * 1000 },
+    {
+      name: "check",
+      data: { monitorId },
+      opts: {
+        removeOnComplete: true,
+        removeOnFail: { count: 100 },
+      },
+    },
+  );
+}
+
+export async function removeMonitorScheduler(
+  queue: Queue<CheckJobPayload>,
+  monitorId: string,
+): Promise<void> {
+  await queue.removeJobScheduler(monitorJobSchedulerId(monitorId));
+}

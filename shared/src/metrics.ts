@@ -53,6 +53,16 @@ export async function getMonitorStatus(
   };
 }
 
+// Used when a monitor is paused or deleted. The status hash has no TTL of its
+// own, so without this it would outlive the monitor. Clearing it on pause also
+// stops a stale cached status from suppressing the first check after a resume.
+export async function clearMonitorState(
+  redis: IORedis,
+  monitorId: string,
+): Promise<void> {
+  await redis.del(statusKey(monitorId), samplesKey(monitorId));
+}
+
 // Only successful checks should be recorded here — a timeout is not a
 // response time, and downtime should read as a gap in the chart.
 export async function pushResponseSample(
