@@ -1,17 +1,25 @@
+import Link from 'next/link'
+
 import { Logo } from '@/components/logo'
+import { LEGAL_CONTACT_EMAIL } from '@/lib/legal'
 
 const columns = [
   {
     title: 'Product',
-    links: ['Features', 'Monitoring', 'Analytics', 'Status Pages', 'Pricing'],
-  },
-  {
-    title: 'Resources',
-    links: ['Documentation', 'Help Center', 'API', 'Changelog'],
+    links: [
+      { label: 'Features', href: '/#features' },
+      { label: 'How It Works', href: '/#how-it-works' },
+      { label: 'Analytics', href: '/#analytics' },
+      { label: 'Pricing', href: '/#pricing' },
+    ],
   },
   {
     title: 'Company',
-    links: ['About', 'Contact', 'Privacy', 'Terms'],
+    links: [
+      { label: 'Contact', href: `mailto:${LEGAL_CONTACT_EMAIL}` },
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
+    ],
   },
 ]
 
@@ -19,7 +27,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border px-4 py-14 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
+        <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr]">
           <div className="max-w-xs">
             <Logo />
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -32,13 +40,13 @@ export function Footer() {
               <h3 className="text-sm font-medium">{col.title}</h3>
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
                       className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      {link}
-                    </a>
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>

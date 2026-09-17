@@ -1,6 +1,3 @@
 packages:
   - apps/*
   - shared
-
-onlyBuiltDependencies:
-  - supabase

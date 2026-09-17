@@ -6,7 +6,6 @@ import { MonitorSection } from "./monitor-section";
 import { IncidentSection } from "./incident-section";
 import { HowItWorks } from "./how-it-works";
 import { Analytics } from "./analytics";
-import { StatusPage } from "./status-page";
 import { Pricing } from "./pricing";
 import { CTA } from "./cta";
 
@@ -21,7 +20,6 @@ const LandingPage = () => {
       <IncidentSection />
       <HowItWorks />
       <Analytics />
-      <StatusPage />
       <Pricing />
       <CTA />
     </div>

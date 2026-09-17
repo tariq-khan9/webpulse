@@ -9,11 +9,11 @@ const links = [
   { label: "Features", href: "#features" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Analytics", href: "#analytics" },
-  { label: "Status Pages", href: "#status" },
   { label: "Pricing", href: "#pricing" },
 ];
 
-export function Navbar() {
+// Signed-in visitors get a Dashboard link instead of the sign-in/sign-up pair.
+export function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -48,21 +48,23 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button
-            variant="ghost"
-            size="lg"
-            nativeButton={false}
-            render={<a href="/auth/login" />}
-          >
-            Sign In
-          </Button>
+          {isSignedIn ? null : (
+            <Button
+              variant="ghost"
+              size="lg"
+              nativeButton={false}
+              render={<a href="/auth/login" />}
+            >
+              Sign In
+            </Button>
+          )}
           <Button
             size="lg"
             nativeButton={false}
             className="bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-90"
-            render={<a href="#pricing" />}
+            render={<a href={isSignedIn ? "/dashboard" : "/auth/signup"} />}
           >
-            Get Started
+            {isSignedIn ? "Dashboard" : "Get Started"}
             <ArrowRight className="size-4" />
           </Button>
         </div>
@@ -94,21 +96,23 @@ export function Navbar() {
             ))}
           </nav>
           <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
-            <Button
-              variant="outline"
-              size="lg"
-              nativeButton={false}
-              render={<a href="/auth/login" />}
-            >
-              Sign In
-            </Button>
+            {isSignedIn ? null : (
+              <Button
+                variant="outline"
+                size="lg"
+                nativeButton={false}
+                render={<a href="/auth/login" />}
+              >
+                Sign In
+              </Button>
+            )}
             <Button
               size="lg"
               nativeButton={false}
               className="bg-gradient-to-r from-primary to-accent text-primary-foreground"
-              render={<a href="#pricing" onClick={() => setOpen(false)} />}
+              render={<a href={isSignedIn ? "/dashboard" : "/auth/signup"} />}
             >
-              Get Started
+              {isSignedIn ? "Dashboard" : "Get Started"}
               <ArrowRight className="size-4" />
             </Button>
           </div>

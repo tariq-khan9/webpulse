@@ -5,9 +5,8 @@
   "scripts": {
     "dev:web": "pnpm --filter @webpulse/web dev",
     "dev:worker": "pnpm --filter @webpulse/worker dev",
-    "build": "pnpm --filter @webpulse/shared build && pnpm -r build"
-  },
-  "devDependencies": {
-    "supabase": "^2.114.0"
+    "build": "pnpm --filter @webpulse/shared build && pnpm -r build",
+    "db:migrate": "pnpm --filter @webpulse/shared db:migrate",
+    "db:deploy": "pnpm --filter @webpulse/shared db:deploy"
   }
 }

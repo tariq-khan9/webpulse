@@ -25,7 +25,7 @@ export function CTA() {
             size="lg"
             nativeButton={false}
             className="h-12 w-full rounded-xl bg-linear-to-r from-primary to-accent px-6 text-base text-primary-foreground shadow-xl shadow-primary/30 hover:opacity-90 sm:w-auto"
-            render={<a href="#pricing" />}
+            render={<a href="/auth/signup" />}
           >
             Start Monitoring for Free
             <ArrowRight className="size-4" />

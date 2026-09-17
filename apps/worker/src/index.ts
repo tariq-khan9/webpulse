@@ -1,10 +1,12 @@
 //apps/worker/src/index.ts
+import { upsertRollupScheduler } from "@webpulse/shared";
 import { checkConsumer } from "./consumer.js";
+import { db } from "./db.js";
 import { logger } from "./logger.js";
-import { checkQueue } from "./queue.js";
+import { checkQueue, rollupQueue } from "./queue.js";
 import { reconcileSchedulers } from "./reconciler.js";
 import { queueConnection, workerConnection } from "./redis.js";
-import { supabase } from "./supabase.js";
+import { rollupConsumer } from "./rollup-consumer.js";
 
 const RECONCILE_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -14,11 +16,8 @@ async function verifyConnections(): Promise<void> {
   await queueConnection.ping();
   logger.info("Redis connection ok");
 
-  const { error } = await supabase.from("monitors").select("id").limit(1);
-  if (error) {
-    throw new Error(`Supabase connection failed: ${error.message}`);
-  }
-  logger.info("Supabase connection ok");
+  await db.$queryRaw`SELECT 1`;
+  logger.info("Postgres connection ok");
 }
 
 // A failed reconcile is never fatal: the schedulers already in Redis keep
@@ -38,9 +37,12 @@ async function shutdown(reconcileTimer: NodeJS.Timeout): Promise<void> {
     // Close the consumer first so in-flight checks can finish before the
     // connections they depend on go away.
     await checkConsumer.close();
+    await rollupConsumer.close();
     await checkQueue.close();
+    await rollupQueue.close();
     await queueConnection.quit();
     await workerConnection.quit();
+    await db.$disconnect();
   } catch (error) {
     logger.error("Error during shutdown", { error: String(error) });
   }
@@ -67,6 +69,9 @@ async function main(): Promise<void> {
   logger.info("Worker starting");
   await verifyConnections();
   await safeReconcile();
+
+  // Idempotent: re-upserting the same cron scheduler is a no-op.
+  await upsertRollupScheduler(rollupQueue);
 
   const reconcileTimer = setInterval(() => void safeReconcile(), RECONCILE_INTERVAL_MS);
 

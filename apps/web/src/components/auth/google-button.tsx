@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 type GoogleButtonProps = {
   onError: (message: string | null) => void;
@@ -17,20 +17,18 @@ export function GoogleButton({ onError }: GoogleButtonProps) {
     onError(null);
     setIsLoading(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await authClient.signIn.social({
       provider: "google",
-      options: {
-        // `flow=oauth` survives the round trip so /auth/message can tell an
-        // OAuth failure apart from an expired email link.
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?flow=oauth`,
-      },
+      callbackURL: "/dashboard",
+      // `flow=oauth` lets /auth/message tell an OAuth failure apart from an
+      // expired email link.
+      errorCallbackURL: "/auth/message?flow=oauth",
     });
 
     // On success the browser leaves for Google's consent screen, so the
     // spinner stays up until the page unloads. Only a failed handoff lands here.
     if (error) {
-      onError(error.message);
+      onError(error.message ?? "Could not start Google sign-in.");
       setIsLoading(false);
     }
   }

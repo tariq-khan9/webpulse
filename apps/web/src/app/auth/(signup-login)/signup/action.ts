@@ -1,6 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { authErrorMessage } from "@/lib/auth-errors";
+import { EMAIL_CONFIRMED_URL } from "@/lib/auth-messages";
 
 type SignUpInput = {
   name: string;
@@ -15,19 +17,14 @@ export async function signUpAction({
   email,
   password,
 }: SignUpInput): Promise<SignUpResult> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { full_name: name }, // stored in auth.users.user_metadata
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
+  try {
+    // No session yet: email verification is required, and the emailed link
+    // signs the user in once confirmed.
+    await auth.api.signUpEmail({
+      body: { name, email, password, callbackURL: EMAIL_CONFIRMED_URL },
+    });
+  } catch (error) {
+    return { success: false, error: authErrorMessage(error) };
   }
 
   return { success: true };

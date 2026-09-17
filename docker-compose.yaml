@@ -1,10 +1,59 @@
 services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: webpulse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: webpulse
+    # Sized for a 2 GB VPS shared with web, worker and Redis.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=50
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webpulse -d webpulse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Bound to localhost: Docker bypasses the host firewall. The port is
+    # configurable so it can sit beside another local Postgres in development.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Postgres 18 images keep data under a version-specific subdirectory
+      # of /var/lib/postgresql, so the volume mounts the parent.
+      - postgres-data:/var/lib/postgresql
+
   redis:
     image: redis:7-alpine
+    # noeviction: BullMQ breaks if Redis silently drops its keys, so a full
+    # instance must reject writes instead. appendonly: job schedulers and live
+    # status survive a restart rather than waiting for the hourly reconcile.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
+    restart: unless-stopped
+    # Bound to localhost: Docker bypasses the host firewall, and this Redis
+    # has no password.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
 
 volumes:
+  postgres-data:
   redis-data:

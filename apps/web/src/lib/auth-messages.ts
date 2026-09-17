@@ -1,5 +1,10 @@
 // lib/auth-messages.ts
 
+// Where an emailed verification link sends the user. On failure Better Auth
+// appends `error=<code>`, which /auth/message shows instead.
+export const EMAIL_CONFIRMED_URL =
+  "/auth/message?webpulse=notify&notification_code=email-confirmed";
+
 export type AuthMessageType =
   // Signup / email confirmation
   | "signup-confirmation-sent"
@@ -15,7 +20,7 @@ export type AuthMessageType =
   | "email-change-sent"
   | "email-change-confirmed"
 
-  // Link/token errors (Supabase error_code)
+  // Link/token errors
   | "link-expired"
   | "link-invalid"
 

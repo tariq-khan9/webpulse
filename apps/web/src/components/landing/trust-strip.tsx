@@ -1,10 +1,10 @@
-import { Radio, Zap, ChartLine, Globe } from "lucide-react";
+import { Radio, Zap, ChartLine, Mail } from "lucide-react";
 
 const benefits = [
   { icon: Radio, label: "Reliable monitoring" },
   { icon: Zap, label: "Fast incident detection" },
   { icon: ChartLine, label: "Clear uptime analytics" },
-  { icon: Globe, label: "Public status pages" },
+  { icon: Mail, label: "Down & recovery emails" },
 ];
 
 export function TrustStrip() {

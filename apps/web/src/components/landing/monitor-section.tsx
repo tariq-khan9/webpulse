@@ -2,7 +2,7 @@ import { Check, Timer, Signal, Gauge, Zap, Settings2 } from "lucide-react";
 import { LineChart } from "@/components/landing/charts";
 
 const benefits = [
-  { icon: Timer, text: "Custom monitoring intervals" },
+  { icon: Timer, text: "1- or 5-minute check intervals" },
   { icon: Signal, text: "HTTP status monitoring" },
   { icon: Gauge, text: "Response-time tracking" },
   { icon: Zap, text: "Automatic incident detection" },
@@ -88,8 +88,8 @@ export function MonitorSection() {
             Know the moment something breaks.
           </h2>
           <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-            WebPulse continuously checks your websites from around the world and
-            detects downtime within seconds — so you find out before your users
+            WebPulse checks your websites around the clock and
+            emails you the moment they go down — so you find out before your users
             do.
           </p>
 

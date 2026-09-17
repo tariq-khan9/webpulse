@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-export async function logoutAction() {
-  const supabase = await createClient();
+import { auth } from "@/lib/auth";
 
-  await supabase.auth.signOut();
+export async function logoutAction() {
+  await auth.api.signOut({ headers: await headers() });
 
   redirect("/auth/message?webpulse=notify&notification_code=logged-out");
 }

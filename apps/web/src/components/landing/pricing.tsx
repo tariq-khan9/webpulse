@@ -12,8 +12,9 @@ const plans = [
     features: [
       "3 monitors",
       "5-minute checks",
-      "Basic uptime monitoring",
-      "Basic incident tracking",
+      "Down & recovery emails",
+      "Incident history",
+      "Response-time and uptime charts",
     ],
   },
   {
@@ -23,27 +24,11 @@ const plans = [
     cta: "Start Monitoring",
     highlighted: true,
     features: [
-      "25 monitors",
+      "30 monitors",
       "1-minute checks",
-      "Incident management",
-      "Advanced analytics",
-      "Status pages",
-      "Notifications",
-    ],
-  },
-  {
-    name: "Business",
-    price: "$29",
-    tagline: "For teams and growing products.",
-    cta: "Get Started",
-    highlighted: false,
-    features: [
-      "100 monitors",
-      "Advanced monitoring",
-      "Team features",
-      "Extended analytics",
-      "Multiple status pages",
-      "Priority support",
+      "Down & recovery emails",
+      "Incident history",
+      "Response-time and uptime charts",
     ],
   },
 ];
@@ -58,15 +43,14 @@ export function Pricing() {
           description="Start free and upgrade as your monitoring needs grow. Every plan includes fast, reliable checks."
         />
 
-        <div className="mt-14 grid items-start gap-6 lg:grid-cols-3">
+        <div className="mx-auto mt-14 grid max-w-3xl items-start gap-6 md:grid-cols-2">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative flex flex-col rounded-2xl border p-6 sm:p-8  ${
+              className={`relative flex flex-col rounded-2xl border p-6 sm:p-8 ${
                 plan.highlighted
-                  ? "border-primary/50 bg-card glow-primary lg:-mt-4 lg:pb-12"
+                  ? "border-primary/50 bg-card glow-primary"
                   : "border-border bg-card/50"
-              }
               }`}
             >
               {plan.highlighted && (
@@ -91,11 +75,12 @@ export function Pricing() {
                 size="lg"
                 nativeButton={false}
                 variant={plan.highlighted ? "default" : "outline"}
-                className={`mt-6 h-11 w-full rounded-xl text-sm  ${
-                  plan.highlighted &&
-                  "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-90"
+                className={`mt-6 h-11 w-full rounded-xl text-sm ${
+                  plan.highlighted
+                    ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-90"
+                    : ""
                 }`}
-                render={<a href="#" />}
+                render={<a href="/auth/signup" />}
               >
                 {plan.cta}
               </Button>
@@ -104,8 +89,7 @@ export function Pricing() {
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-3 text-sm">
                     <span
-                      className={`flex size-5 shrink-0 items-center justify-center rounded-full",
-                        ${
+                      className={`flex size-5 shrink-0 items-center justify-center rounded-full ${
                           plan.highlighted
                             ? "bg-primary/15 text-primary"
                             : "bg-success/10 text-success"

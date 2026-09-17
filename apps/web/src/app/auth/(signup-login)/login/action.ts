@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 type LoginInput = {
   email: string;
@@ -13,15 +14,11 @@ export async function LoginAction({
   email,
   password,
 }: LoginInput): Promise<LoginResult> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    return { success: false, error: error.message };
+  try {
+    // The nextCookies plugin sets the session cookie on this response.
+    await auth.api.signInEmail({ body: { email, password } });
+  } catch (error) {
+    return { success: false, error: authErrorMessage(error) };
   }
 
   return { success: true };

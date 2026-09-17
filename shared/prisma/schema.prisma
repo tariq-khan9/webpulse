@@ -1,0 +1,190 @@
+// Single source of truth for the database schema, shared by web and worker.
+//
+// Some rules cannot be expressed here and live in hand-written SQL inside the
+// migrations: CHECK constraints, the one-open-incident partial unique index,
+// the signup and monitor-limit triggers, and the functions that change
+// monitor state atomically. When a new migration is generated, check that it
+// does not drop any of them.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth (Better Auth core tables)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  sessions     Session[]
+  accounts     Account[]
+  monitors     Monitor[]
+  subscription Subscription?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  userId                String    @map("user_id")
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ---------------------------------------------------------------------------
+// Monitoring
+// ---------------------------------------------------------------------------
+
+model Monitor {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String    @map("user_id")
+  name                 String
+  url                  String
+  // CHECK (status IN ('unknown', 'up', 'down')) — see migration
+  status               String    @default("unknown")
+  isPaused             Boolean   @default(false) @map("is_paused")
+  // CHECK (method IN ('GET', 'HEAD', 'POST')) — see migration
+  method               String    @default("GET")
+  timeoutMs            Int       @default(10000) @map("timeout_ms")
+  checkIntervalSeconds Int       @default(300) @map("check_interval_seconds")
+  lastCheckedAt        DateTime? @map("last_checked_at") @db.Timestamptz
+  lastStatusChangeAt   DateTime? @map("last_status_change_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incidents   Incident[]
+  uptimeDaily UptimeDaily[]
+  alerts      Alert[]
+
+  @@unique([userId, url])
+  @@index([userId])
+  @@map("monitors")
+}
+
+model Incident {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  monitorId    String    @map("monitor_id") @db.Uuid
+  startedAt    DateTime  @map("started_at") @db.Timestamptz
+  resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz
+  statusCode   Int?      @map("status_code")
+  errorMessage String?   @map("error_message")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  alerts  Alert[]
+
+  // Partial unique index "incidents_one_open_idx" (one open incident per
+  // monitor) — see migration
+  @@index([monitorId])
+  @@map("incidents")
+}
+
+model UptimeDaily {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  monitorId        String   @map("monitor_id") @db.Uuid
+  date             DateTime @db.Date
+  uptimePercentage Decimal  @map("uptime_percentage") @db.Decimal(5, 2)
+  avgResponseMs    Int?     @map("avg_response_ms")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, date])
+  @@map("uptime_daily")
+}
+
+model Alert {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  monitorId  String    @map("monitor_id") @db.Uuid
+  incidentId String?   @map("incident_id") @db.Uuid
+  // CHECK (type IN ('down', 'up')) — see migration
+  type       String
+  sentAt     DateTime? @map("sent_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  monitor  Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  // Makes alert sending idempotent: a retried job cannot email twice.
+  @@unique([incidentId, type])
+  @@index([monitorId])
+  @@map("alerts")
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String    @unique @map("user_id")
+  stripeCustomerId     String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  // CHECK (status IN ('inactive', 'active', 'past_due', 'canceled')) — see migration
+  status               String    @default("inactive")
+  // Created as a Free-plan row by the users insert trigger — see migration
+  monitorLimit         Int       @default(3) @map("monitor_limit")
+  currentPeriodEnd     DateTime? @map("current_period_end") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}

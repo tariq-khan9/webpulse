@@ -4,13 +4,14 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import {
   assertSafeUrl,
-  clearMonitorState,
-  removeMonitorScheduler,
+  isDatabaseError,
+  isUniqueViolation,
   UnsafeUrlError,
-  upsertMonitorScheduler,
 } from "@webpulse/shared";
-import { checkQueue, redis } from "@/lib/redis";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { getMonitorViews, type MonitorView } from "@/lib/monitor-view";
+import { clearCache, syncSchedule } from "@/lib/schedule";
+import { getSession } from "@/lib/session";
 import { checkIntervalForSubscription } from "@/lib/tiers";
 
 type ActionResult = { success: true } | { success: false; error: string };
@@ -20,105 +21,93 @@ const monitorSchema = z.object({
   url: z.string().trim().url("Enter a valid URL."),
 });
 
+// Postgres rejects a malformed uuid with an error, so ids are checked first
+// and a bad one is reported like any other unknown monitor.
+const monitorIdSchema = z.uuid();
+
+const NOT_SIGNED_IN = { success: false, error: "You must be signed in." } as const;
+const NOT_FOUND = { success: false, error: "Monitor not found." } as const;
+
 // Server Actions are reachable by direct POST, not just through the UI, so
 // every one of them re-checks the session rather than trusting the caller.
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return { supabase, user };
+async function getUserId(): Promise<string | null> {
+  const session = await getSession();
+  return session?.user.id ?? null;
 }
 
-// Redis is kept in step so a change takes effect immediately instead of
-// waiting for the worker's hourly reconcile. A failure here is logged rather
-// than surfaced: the row is already correct, and the reconciler repairs the
-// schedule. Reporting failure would wrongly suggest nothing was saved.
-async function syncSchedule(
-  monitorId: string,
-  intervalSeconds: number | null,
-): Promise<void> {
-  try {
-    if (intervalSeconds === null) {
-      await removeMonitorScheduler(checkQueue, monitorId);
-    } else {
-      await upsertMonitorScheduler(checkQueue, monitorId, intervalSeconds);
-    }
-  } catch (error) {
-    console.error("Failed to sync monitor schedule", { monitorId, error });
-  }
-}
-
-async function clearCache(monitorId: string): Promise<void> {
-  try {
-    await clearMonitorState(redis, monitorId);
-  } catch (error) {
-    console.error("Failed to clear monitor cache", { monitorId, error });
-  }
-}
-
-export async function createMonitorAction(input: {
-  name: string;
-  url: string;
-}): Promise<ActionResult> {
-  const { supabase, user } = await requireUser();
-  if (!user) return { success: false, error: "You must be signed in." };
-
-  const parsed = monitorSchema.safeParse(input);
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0].message };
-  }
-
+async function checkUrl(url: string): Promise<ActionResult> {
   // The worker refuses unsafe URLs at check time too, but validating here
   // means the user finds out now instead of owning a monitor that silently
   // never reports.
   try {
-    await assertSafeUrl(parsed.data.url);
+    await assertSafeUrl(url);
+    return { success: true };
   } catch (error) {
     if (error instanceof UnsafeUrlError) {
       return { success: false, error: "That URL is not allowed." };
     }
     return { success: false, error: "That URL could not be resolved." };
   }
+}
 
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", user.id)
-    .maybeSingle();
+// Polled by the dashboard so status, last-checked time and response time stay
+// current without a reload — a server-rendered page reads Redis once, but the
+// worker keeps writing to it. Returns null rather than an empty list when the
+// session has gone, so an expired cookie cannot blank out the panel.
+export async function listMonitorsAction(): Promise<MonitorView[] | null> {
+  const userId = await getUserId();
+  if (!userId) return null;
 
-  const intervalSeconds = checkIntervalForSubscription(
-    subscription?.status ?? null,
-  );
+  return getMonitorViews(userId);
+}
+
+export async function createMonitorAction(input: {
+  name: string;
+  url: string;
+}): Promise<ActionResult> {
+  const userId = await getUserId();
+  if (!userId) return NOT_SIGNED_IN;
+
+  const parsed = monitorSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const urlCheck = await checkUrl(parsed.data.url);
+  if (!urlCheck.success) return urlCheck;
+
+  const subscription = await db.subscription.findUnique({
+    where: { userId },
+    select: { status: true },
+  });
+
+  const intervalSeconds = checkIntervalForSubscription(subscription?.status ?? null);
 
   // The monitor_limit trigger enforces the plan's cap in the database, so a
   // crafted request cannot get past it.
-  const { data, error } = await supabase
-    .from("monitors")
-    .insert({
-      user_id: user.id,
-      name: parsed.data.name,
-      url: parsed.data.url,
-      check_interval_seconds: intervalSeconds,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    if (error.message.includes("Monitor limit reached")) {
-      return {
-        success: false,
-        error: "You have reached the monitor limit for your plan.",
-      };
+  let monitorId: string;
+  try {
+    const monitor = await db.monitor.create({
+      data: {
+        userId,
+        name: parsed.data.name,
+        url: parsed.data.url,
+        checkIntervalSeconds: intervalSeconds,
+      },
+      select: { id: true },
+    });
+    monitorId = monitor.id;
+  } catch (error) {
+    if (isDatabaseError(error, "Monitor limit reached")) {
+      return { success: false, error: "You have reached the monitor limit for your plan." };
     }
-    if (error.code === "23505") {
+    if (isUniqueViolation(error)) {
       return { success: false, error: "You are already monitoring that URL." };
     }
-    return { success: false, error: error.message };
+    throw error;
   }
 
-  await syncSchedule(data.id, intervalSeconds);
+  await syncSchedule(monitorId, intervalSeconds);
   refresh();
 
   return { success: true };
@@ -129,40 +118,36 @@ export async function updateMonitorAction(input: {
   name: string;
   url: string;
 }): Promise<ActionResult> {
-  const { supabase, user } = await requireUser();
-  if (!user) return { success: false, error: "You must be signed in." };
+  const userId = await getUserId();
+  if (!userId) return NOT_SIGNED_IN;
+
+  if (!monitorIdSchema.safeParse(input.id).success) return NOT_FOUND;
 
   const parsed = monitorSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
 
+  const urlCheck = await checkUrl(parsed.data.url);
+  if (!urlCheck.success) return urlCheck;
+
+  // Filtering on userId means a wrong id matches nothing rather than touching
+  // someone else's monitor.
+  let updated: number;
   try {
-    await assertSafeUrl(parsed.data.url);
+    const result = await db.monitor.updateMany({
+      where: { id: input.id, userId },
+      data: { name: parsed.data.name, url: parsed.data.url },
+    });
+    updated = result.count;
   } catch (error) {
-    if (error instanceof UnsafeUrlError) {
-      return { success: false, error: "That URL is not allowed." };
-    }
-    return { success: false, error: "That URL could not be resolved." };
-  }
-
-  // RLS restricts this to the caller's own rows, so a wrong id simply
-  // matches nothing rather than touching someone else's monitor.
-  const { data, error } = await supabase
-    .from("monitors")
-    .update({ name: parsed.data.name, url: parsed.data.url })
-    .eq("id", input.id)
-    .select("id")
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "23505") {
+    if (isUniqueViolation(error)) {
       return { success: false, error: "You are already monitoring that URL." };
     }
-    return { success: false, error: error.message };
+    throw error;
   }
 
-  if (!data) return { success: false, error: "Monitor not found." };
+  if (updated === 0) return NOT_FOUND;
 
   // A changed URL makes the cached status meaningless — it describes the old
   // target. Clearing it lets the next check start from a clean slate.
@@ -176,30 +161,38 @@ export async function setMonitorPausedAction(input: {
   id: string;
   paused: boolean;
 }): Promise<ActionResult> {
-  const { supabase, user } = await requireUser();
-  if (!user) return { success: false, error: "You must be signed in." };
+  const userId = await getUserId();
+  if (!userId) return NOT_SIGNED_IN;
 
-  // Goes through a SECURITY DEFINER function because pausing must also
-  // resolve any open incident, and clients cannot write to incidents. The
-  // function verifies ownership itself.
-  const { error } = await supabase.rpc("set_monitor_paused", {
-    p_monitor_id: input.id,
-    p_paused: input.paused,
-  });
+  if (!monitorIdSchema.safeParse(input.id).success) return NOT_FOUND;
 
-  if (error) return { success: false, error: error.message };
+  // A database function, because pausing must also resolve any open incident
+  // in the same transaction. It verifies ownership itself.
+  try {
+    await db.$executeRaw`
+      SELECT set_monitor_paused(${input.id}::uuid, ${userId}, ${input.paused})
+    `;
+  } catch (error) {
+    if (isDatabaseError(error, "Monitor limit reached")) {
+      return {
+        success: false,
+        error: "Your plan's monitor limit is reached. Pause or delete another monitor first.",
+      };
+    }
+    if (isDatabaseError(error, "Monitor not found")) return NOT_FOUND;
+    throw error;
+  }
 
   if (input.paused) {
     await syncSchedule(input.id, null);
     await clearCache(input.id);
   } else {
-    const { data: monitor } = await supabase
-      .from("monitors")
-      .select("check_interval_seconds")
-      .eq("id", input.id)
-      .maybeSingle();
+    const monitor = await db.monitor.findFirst({
+      where: { id: input.id, userId },
+      select: { checkIntervalSeconds: true },
+    });
 
-    if (monitor) await syncSchedule(input.id, monitor.check_interval_seconds);
+    if (monitor) await syncSchedule(input.id, monitor.checkIntervalSeconds);
   }
 
   refresh();
@@ -209,18 +202,16 @@ export async function setMonitorPausedAction(input: {
 export async function deleteMonitorAction(input: {
   id: string;
 }): Promise<ActionResult> {
-  const { supabase, user } = await requireUser();
-  if (!user) return { success: false, error: "You must be signed in." };
+  const userId = await getUserId();
+  if (!userId) return NOT_SIGNED_IN;
 
-  const { data, error } = await supabase
-    .from("monitors")
-    .delete()
-    .eq("id", input.id)
-    .select("id")
-    .maybeSingle();
+  if (!monitorIdSchema.safeParse(input.id).success) return NOT_FOUND;
 
-  if (error) return { success: false, error: error.message };
-  if (!data) return { success: false, error: "Monitor not found." };
+  const { count } = await db.monitor.deleteMany({
+    where: { id: input.id, userId },
+  });
+
+  if (count === 0) return NOT_FOUND;
 
   // Redis has no cascade of its own, and the status key has no TTL, so it
   // would outlive the monitor if not removed here.

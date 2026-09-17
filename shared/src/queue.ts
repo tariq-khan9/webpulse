@@ -45,3 +45,30 @@ export async function removeMonitorScheduler(
 ): Promise<void> {
   await queue.removeJobScheduler(monitorJobSchedulerId(monitorId));
 }
+
+// ---------------------------------------------------------------------------
+// Daily rollup
+// ---------------------------------------------------------------------------
+// Its own queue rather than a second job name on the check queue, so the two
+// keep separate payload types and separate concurrency.
+
+export const ROLLUP_QUEUE_NAME = "daily-rollup";
+
+const ROLLUP_SCHEDULER_ID = "daily-rollup";
+
+export function createRollupQueue(connection: IORedis): Queue {
+  return new Queue(ROLLUP_QUEUE_NAME, { connection });
+}
+
+// Runs at 00:10 UTC. The delay past midnight leaves room for any check still
+// in flight to close out the previous day before it is summarised.
+export async function upsertRollupScheduler(queue: Queue): Promise<void> {
+  await queue.upsertJobScheduler(
+    ROLLUP_SCHEDULER_ID,
+    { pattern: "10 0 * * *", tz: "UTC" },
+    {
+      name: "rollup",
+      opts: { removeOnComplete: true, removeOnFail: { count: 30 } },
+    },
+  );
+}

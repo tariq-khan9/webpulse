@@ -2,7 +2,7 @@ import {
   MonitorCheck,
   TriangleAlert,
   ChartLine,
-  Globe,
+  Mail,
   Server,
 } from "lucide-react";
 import { LineChart } from "@/components/landing/charts";
@@ -140,29 +140,27 @@ export function Features() {
             </div>
           </CardShell>
 
-          {/* Feature 4 — Status pages */}
+          {/* Feature 4 — Email alerts */}
           <CardShell
             className="lg:col-span-2"
-            icon={Globe}
-            title="Public Status Pages"
-            description="Share a simple, branded status page with your users."
+            icon={Mail}
+            title="Email Alerts"
+            description="One email when a site goes down, one when it recovers."
           >
-            <div className="rounded-xl border border-border bg-background/50 p-4">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <span className="size-2 rounded-full bg-success pulse-dot" />
-                <span className="text-sm font-medium">
-                  All Systems Operational
-                </span>
-              </div>
-              <ul className="mt-2.5 space-y-1.5 text-xs text-muted-foreground">
-                {["Website", "API", "Database", "Authentication"].map((s) => (
-                  <li key={s} className="flex items-center justify-between">
-                    <span>{s}</span>
-                    <span className="text-success">Operational</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ul className="space-y-2">
+              <li className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+                <p className="text-sm font-medium">mystore.com is down</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Reason: HTTP 503 · 14:07
+                </p>
+              </li>
+              <li className="rounded-xl border border-success/30 bg-success/5 px-3 py-2.5">
+                <p className="text-sm font-medium">mystore.com is back up</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Recovered · 14:11
+                </p>
+              </li>
+            </ul>
           </CardShell>
 
           {/* Feature 5 — Monitoring at a glance */}

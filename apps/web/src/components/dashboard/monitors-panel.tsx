@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
 import { Loader2, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
 
 import {
   createMonitorAction,
   deleteMonitorAction,
+  listMonitorsAction,
   setMonitorPausedAction,
   updateMonitorAction,
 } from "@/app/(dashboard)/dashboard/monitor-actions";
@@ -13,6 +15,7 @@ import {
   MonitorFormDialog,
   type MonitorFormValues,
 } from "@/components/dashboard/monitor-form-dialog";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +38,10 @@ export interface MonitorView {
 
 const EMPTY_FORM: MonitorFormValues = { name: "", url: "" };
 
+// Short enough that a 60s check surfaces quickly, long enough that an idle
+// dashboard is not hammering Redis.
+const POLL_INTERVAL_MS = 15_000;
+
 function formatInterval(seconds: number): string {
   if (seconds % 60 === 0) return `every ${seconds / 60} min`;
   return `every ${seconds}s`;
@@ -50,25 +57,8 @@ function formatLastChecked(value: string | null): string {
   return `checked ${Math.floor(elapsedSeconds / 86400)}d ago`;
 }
 
-function StatusBadge({ monitor }: { monitor: MonitorView }) {
-  const { label, dot, text } = monitor.isPaused
-    ? { label: "Paused", dot: "bg-slate-500", text: "text-slate-400" }
-    : monitor.status === "up"
-      ? { label: "Up", dot: "bg-emerald-400", text: "text-emerald-400" }
-      : monitor.status === "down"
-        ? { label: "Down", dot: "bg-red-400", text: "text-red-400" }
-        : { label: "Pending", dot: "bg-amber-400", text: "text-amber-400" };
-
-  return (
-    <span className={`inline-flex items-center gap-2 text-sm font-medium ${text}`}>
-      <span className={`h-2 w-2 rounded-full ${dot}`} />
-      {label}
-    </span>
-  );
-}
-
 export function MonitorsPanel({
-  monitors,
+  monitors: initialMonitors,
   monitorLimit,
   planStatus,
 }: {
@@ -76,6 +66,8 @@ export function MonitorsPanel({
   monitorLimit: number;
   planStatus: string;
 }) {
+  const [monitors, setMonitors] = useState(initialMonitors);
+  const [syncedProps, setSyncedProps] = useState(initialMonitors);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<MonitorView | null>(null);
   const [deleting, setDeleting] = useState<MonitorView | null>(null);
@@ -84,7 +76,46 @@ export function MonitorsPanel({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // A mutation re-ran the server component and pushed fresh props down. Those
+  // are newer than anything already polled, so they replace it. Adjusting
+  // during render rather than in an effect is React's documented way to reset
+  // state on a prop change — an effect would paint the stale list first.
+  if (syncedProps !== initialMonitors) {
+    setSyncedProps(initialMonitors);
+    setMonitors(initialMonitors);
+  }
+
   const atLimit = monitors.length >= monitorLimit;
+
+  // The page reads Redis once at render, but the worker keeps writing to it,
+  // so status, last-checked time and response time would otherwise sit frozen
+  // until a reload. A hidden tab is skipped rather than polled, and refocusing
+  // re-syncs straight away instead of waiting out the interval.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      if (document.visibilityState !== "visible") return;
+
+      try {
+        const next = await listMonitorsAction();
+        // null means the session expired — keep what is on screen rather than
+        // emptying the list.
+        if (next && !cancelled) setMonitors(next);
+      } catch {
+        // A dropped poll leaves the last known state up; the next tick retries.
+      }
+    }
+
+    const timer = setInterval(poll, POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", poll);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", poll);
+    };
+  }, []);
 
   function openCreate() {
     setEditing(null);
@@ -161,8 +192,11 @@ export function MonitorsPanel({
 
       {atLimit ? (
         <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-300">
-          You have used every monitor on your plan. Remove one, or upgrade for
-          more.
+          You have used every monitor on your plan. Remove one, or{" "}
+          <Link href="/dashboard/billing" className="underline underline-offset-4">
+            upgrade for more
+          </Link>
+          .
         </p>
       ) : null}
 
@@ -192,10 +226,16 @@ export function MonitorsPanel({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-3">
-                      <StatusBadge monitor={monitor} />
-                      <h2 className="truncate font-medium text-white">
+                      <StatusBadge
+                        status={monitor.status}
+                        isPaused={monitor.isPaused}
+                      />
+                      <Link
+                        href={`/dashboard/monitors/${monitor.id}`}
+                        className="truncate font-medium text-white underline-offset-4 hover:underline"
+                      >
                         {monitor.name}
-                      </h2>
+                      </Link>
                     </div>
 
                     <p className="mt-1 truncate text-sm text-slate-400">

@@ -13,8 +13,7 @@ function requireEnv(name: string): string {
 // message, rather than on the first job that happens to need the value.
 export const config = Object.freeze({
   redisUrl: requireEnv("REDIS_URL"),
-  supabaseUrl: requireEnv("SUPABASE_URL"),
-  supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  databaseUrl: requireEnv("DATABASE_URL"),
   resendKey: requireEnv("RESEND_KEY"),
   alertFromEmail: requireEnv("ALERT_FROM_EMAIL"),
 });

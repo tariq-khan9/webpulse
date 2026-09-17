@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "WebPulse — Simple website uptime monitoring",
   description:
-    "Monitor uptime, response times, and incidents from one simple dashboard. Get alerted when something goes wrong and keep your users informed.",
+    "Monitor uptime, response times, and incidents from one simple dashboard. Get an email the moment something goes wrong.",
 
   icons: {
     icon: [

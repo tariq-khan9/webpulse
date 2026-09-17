@@ -1,5 +1,5 @@
 //apps/worker/src/monitors.ts
-import { supabase } from "./supabase.js";
+import { db } from "./db.js";
 
 export interface ActiveMonitor {
   id: string;
@@ -18,45 +18,27 @@ export interface MonitorConfig {
 
 // Returns null when the row is gone. Removing a scheduler does not remove the
 // jobs it already queued, so a job can outlive the monitor it refers to.
-export async function getMonitorById(id: string): Promise<MonitorConfig | null> {
-  const { data, error } = await supabase
-    .from("monitors")
-    .select("id, user_id, name, url, method, timeout_ms, is_paused")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load monitor ${id}: ${error.message}`);
-  }
-
-  if (!data) return null;
-
-  return {
-    id: data.id,
-    userId: data.user_id,
-    name: data.name,
-    url: data.url,
-    method: data.method,
-    timeoutMs: data.timeout_ms,
-    isPaused: data.is_paused,
-  };
+export function getMonitorById(id: string): Promise<MonitorConfig | null> {
+  return db.monitor.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      url: true,
+      method: true,
+      timeoutMs: true,
+      isPaused: true,
+    },
+  });
 }
 
 // Throws rather than returning [] on failure, so callers can tell "there are
 // no active monitors" apart from "the database did not answer". The
 // reconciler's safety depends on that distinction.
-export async function getActiveMonitors(): Promise<ActiveMonitor[]> {
-  const { data, error } = await supabase
-    .from("monitors")
-    .select("id, check_interval_seconds")
-    .eq("is_paused", false);
-
-  if (error) {
-    throw new Error(`Failed to load active monitors: ${error.message}`);
-  }
-
-  return data.map((row) => ({
-    id: row.id,
-    checkIntervalSeconds: row.check_interval_seconds,
-  }));
+export function getActiveMonitors(): Promise<ActiveMonitor[]> {
+  return db.monitor.findMany({
+    where: { isPaused: false },
+    select: { id: true, checkIntervalSeconds: true },
+  });
 }
