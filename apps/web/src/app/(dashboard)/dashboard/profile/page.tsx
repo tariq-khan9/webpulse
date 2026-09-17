@@ -1,46 +1,30 @@
 import React from "react";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { logoutAction } from "@/app/auth/logout/action";
+
 import { ProfileForm } from "@/components/dashboard/profile-form";
-import { AuthBackground } from "@/components/auth/auth-background";
+import { db } from "@/lib/db";
+import { requireSession } from "@/lib/session";
 
 const Page = async () => {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login");
-  }
-
-  const currentName =
-    typeof user.user_metadata?.full_name === "string"
-      ? user.user_metadata.full_name
-      : "";
+  const { user } = await requireSession();
 
   // Google-only accounts have no password to verify or change.
-  const hasPasswordLogin =
-    user.identities?.some((identity) => identity.provider === "email") ?? false;
+  const passwordAccount = await db.account.findFirst({
+    where: { userId: user.id, providerId: "credential" },
+    select: { id: true },
+  });
 
   return (
-    <AuthBackground>
-      <form action={logoutAction} className="fixed right-6 top-6 z-20">
-        <button
-          type="submit"
-          className="rounded-lg border border-border bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
-        >
-          Sign out
-        </button>
-      </form>
+    <>
+      <header className="mb-8">
+        <h1 className="text-2xl font-semibold">Profile</h1>
+        <p className="mt-1 text-sm text-slate-400">{user.email}</p>
+      </header>
 
       <ProfileForm
-        currentName={currentName}
-        hasPasswordLogin={hasPasswordLogin}
+        currentName={user.name}
+        hasPasswordLogin={Boolean(passwordAccount)}
       />
-    </AuthBackground>
+    </>
   );
 };
 

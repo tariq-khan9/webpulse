@@ -22,12 +22,12 @@ export const checkConsumer = new Worker<CheckJobPayload>(
     // A job can outlive its monitor, since removing a scheduler leaves any
     // already-queued job in place. Not an error.
     if (!monitor) {
-      logger.info("Skipping check, monitor no longer exists", { monitorId });
+      logger.debug("Skipping check, monitor no longer exists", { monitorId });
       return;
     }
 
     if (monitor.isPaused) {
-      logger.info("Skipping check, monitor is paused", { monitorId });
+      logger.debug("Skipping check, monitor is paused", { monitorId });
       return;
     }
 
@@ -39,7 +39,7 @@ export const checkConsumer = new Worker<CheckJobPayload>(
       });
 
       const change = await recordCheckResult(monitorId, result);
-      logger.info("Check complete", { monitorId, ...result });
+      logger.debug("Check complete", { monitorId, ...result });
 
       if (change?.incidentId) {
         const type =

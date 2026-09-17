@@ -18,6 +18,21 @@ const secondaryButtonClass =
 function resolveMessageType(
   searchParams: URLSearchParams,
 ): AuthMessageType {
+  const error = searchParams.get("error");
+
+  // Failed Google sign-in, tagged by GoogleButton's `flow=oauth` redirect.
+  // Reaching /auth/message at all means it failed — success goes to /dashboard.
+  if (searchParams.get("flow") === "oauth") {
+    if (error === "access_denied") return "oauth-cancelled";
+    if (error === "unable_to_link_account") return "oauth-account-exists";
+    return "oauth-error";
+  }
+
+  // Better Auth appends `error=<code>` to an emailed link's callback URL when
+  // the link fails. Checked before `webpulse`, which that URL also carries.
+  if (error === "TOKEN_EXPIRED") return "link-expired";
+  if (error) return "link-invalid";
+
   const messageType = searchParams.get("webpulse");
 
   // Custom WebPulse URL
@@ -33,20 +48,6 @@ function resolveMessageType(
     }
 
     return "auth-error";
-  }
-
-  // Supabase-generated error URL
-  // /auth/message?error=access_denied&error_code=otp_expired...
-  if (searchParams.get("error_code") === "otp_expired") {
-    return "link-expired";
-  }
-
-  // Failed Google sign-in, tagged by GoogleButton's `flow=oauth` redirect.
-  // Reaching /auth/message at all means it failed — success goes to /dashboard.
-  if (searchParams.get("flow") === "oauth") {
-    return searchParams.get("error") === "access_denied"
-      ? "oauth-cancelled"
-      : "oauth-error";
   }
 
   return "auth-error";

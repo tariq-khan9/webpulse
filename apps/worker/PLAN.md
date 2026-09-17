@@ -5,7 +5,7 @@ up/down changes as incidents, emails on down and recovery, and charts uptime.
 
 ## Constraints that drive every decision
 
-- **Supabase free tier — 500 MB.** Postgres stores durable facts only. Nothing
+- **Self-hosted Postgres on the same VPS.** Postgres stores durable facts only. Nothing
   high-frequency goes into it.
 - **2 GB VPS** runs web + worker + Redis together.
 - **Keep v1 simple.** No multi-region, no status pages, no extra alert channels.

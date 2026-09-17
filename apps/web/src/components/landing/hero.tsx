@@ -34,8 +34,8 @@ export function Hero() {
           style={{ animationDelay: '0.1s' }}
         >
           Monitor uptime, response times, and incidents from one simple
-          dashboard. Get alerted when something goes wrong and keep your users
-          informed.
+          dashboard. Get an email the moment something goes wrong, and another
+          when it recovers.
         </p>
 
         <div
@@ -46,7 +46,7 @@ export function Hero() {
             size="lg"
             nativeButton={false}
             className="h-12 w-full rounded-xl bg-gradient-to-r from-primary to-accent px-6 text-base text-primary-foreground shadow-xl shadow-primary/30 hover:opacity-90 sm:w-auto"
-            render={<a href="#pricing" />}
+            render={<a href="/auth/signup" />}
           >
             Start Monitoring for Free
             <ArrowRight className="size-4" />

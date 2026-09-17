@@ -90,7 +90,7 @@ export function Analytics() {
             <div>
               <p className="text-sm font-medium">Performance overview</p>
               <p className="text-xs text-muted-foreground">
-                api.webpulse.dev · all regions
+                api.webpulse.dev
               </p>
             </div>
             <div

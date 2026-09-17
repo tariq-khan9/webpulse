@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
+import { resendConfirmationAction } from "@/app/auth/message/action";
 
 const resendSchema = z.object({
   email: z
@@ -53,17 +53,10 @@ export function ResendConfirmationDialog({
   async function onSubmit(values: FormValues) {
     setServerError(null);
 
-    const supabase = createClient();
-    const { error: resendError } = await supabase.auth.resend({
-      type: "signup",
-      email: values.email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      },
-    });
+    const result = await resendConfirmationAction({ email: values.email });
 
-    if (resendError) {
-      setServerError(resendError.message);
+    if (!result.success) {
+      setServerError(result.error);
       return;
     }
 

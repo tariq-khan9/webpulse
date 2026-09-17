@@ -1,31 +1,19 @@
 //apps/worker/src/alerts.ts
 import type { CheckResult } from "./checker.js";
+import { escapeHtml, isUniqueViolation } from "@webpulse/shared";
+import { db } from "./db.js";
 import { sendEmail } from "./email.js";
 import { logger } from "./logger.js";
 import type { MonitorConfig } from "./monitors.js";
-import { supabase } from "./supabase.js";
-
-const UNIQUE_VIOLATION = "23505";
 
 type AlertType = "down" | "up";
 
-// Monitor names and URLs are user-supplied and end up inside an HTML email.
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 async function getOwnerEmail(userId: string): Promise<string | null> {
-  const { data, error } = await supabase.auth.admin.getUserById(userId);
-
-  if (error) {
-    throw new Error(`Failed to load user ${userId}: ${error.message}`);
-  }
-
-  return data.user?.email ?? null;
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  return user?.email ?? null;
 }
 
 function buildSubject(monitor: MonitorConfig, type: AlertType): string {
@@ -63,14 +51,15 @@ export async function sendAlert(
   type: AlertType,
   result: CheckResult,
 ): Promise<void> {
-  const { data, error } = await supabase
-    .from("alerts")
-    .insert({ monitor_id: monitor.id, incident_id: incidentId, type })
-    .select("id")
-    .single();
-
-  if (error) {
-    if (error.code === UNIQUE_VIOLATION) {
+  let alertId: string;
+  try {
+    const alert = await db.alert.create({
+      data: { monitorId: monitor.id, incidentId, type },
+      select: { id: true },
+    });
+    alertId = alert.id;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
       logger.info("Alert already recorded, not sending again", {
         monitorId: monitor.id,
         incidentId,
@@ -78,7 +67,7 @@ export async function sendAlert(
       });
       return;
     }
-    throw new Error(`Failed to record alert: ${error.message}`);
+    throw error;
   }
 
   const email = await getOwnerEmail(monitor.userId);
@@ -93,10 +82,10 @@ export async function sendAlert(
   await sendEmail(email, buildSubject(monitor, type), buildBody(monitor, type, result));
 
   // Rows left with sent_at NULL are a record of alerts that failed to send.
-  await supabase
-    .from("alerts")
-    .update({ sent_at: new Date().toISOString() })
-    .eq("id", data.id);
+  await db.alert.update({
+    where: { id: alertId },
+    data: { sentAt: new Date() },
+  });
 
   logger.info("Alert sent", { monitorId: monitor.id, incidentId, type });
 }

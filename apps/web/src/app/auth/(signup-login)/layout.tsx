@@ -29,8 +29,7 @@ export default function AuthLayout({
           </h2>
           <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-slate-400">
             Monitor uptime, response times, and incidents from one simple
-            dashboard, and keep your users informed the moment something
-            changes.
+            dashboard, and get an email the moment something goes down.
           </p>
         </div>
 

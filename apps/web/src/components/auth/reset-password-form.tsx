@@ -27,7 +27,7 @@ const resetPasswordSchema = z
 
 type FormValues = z.infer<typeof resetPasswordSchema>;
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -45,7 +45,10 @@ export function ResetPasswordForm() {
   async function onSubmit(values: FormValues) {
     setFormError(null);
     try {
-      const result = await resetPasswordAction({ password: values.password });
+      const result = await resetPasswordAction({
+        token,
+        password: values.password,
+      });
       if (result.success) {
         router.push(
           "/auth/message?webpulse=notify&notification_code=password-reset-success",
