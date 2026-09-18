@@ -11,7 +11,8 @@ up/down changes as incidents, emails on down and recovery, and charts uptime.
   the apps. Every database query goes through Prisma, and sign-in is Better Auth
   (email/password with verification, Google, password reset). There is no hosted
   database service and no RLS, so every query on user data filters by user id.
-- **2 GB VPS** runs web + worker + Redis together.
+- **8 GB VPS, shared.** It also runs karkhanoprime.com, the main app, so WebPulse
+  keeps a modest footprint: web + worker + its own Postgres and Redis.
 - **Keep v1 simple.** No multi-region, no status pages, no extra alert channels.
 - The schema and dashboard are **not final** — this plan changes both where it helps.
 
