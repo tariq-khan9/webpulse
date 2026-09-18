@@ -7,6 +7,10 @@ up/down changes as incidents, emails on down and recovery, and charts uptime.
 
 - **Self-hosted Postgres on the same VPS.** Postgres stores durable facts only. Nothing
   high-frequency goes into it.
+- **Postgres and Redis in Docker, Prisma, Better Auth.** Both run as containers beside
+  the apps. Every database query goes through Prisma, and sign-in is Better Auth
+  (email/password with verification, Google, password reset). There is no hosted
+  database service and no RLS, so every query on user data filters by user id.
 - **2 GB VPS** runs web + worker + Redis together.
 - **Keep v1 simple.** No multi-region, no status pages, no extra alert channels.
 - The schema and dashboard are **not final** — this plan changes both where it helps.
@@ -42,7 +46,7 @@ is roughly a 99% cut in database writes.
 Postgres stays the authority and Redis is a cache in front of it: if Redis is lost,
 status and incident history are still correct, and only the live chart has a gap.
 
-## Schema changes needed
+## Schema changes (all landed in the baseline migration)
 
 - `monitors` — add `method`, `timeout_ms`, `check_interval_seconds` (300 now, so the
   Pro 1-minute tier is later a value change, not a migration).
@@ -61,12 +65,12 @@ status and incident history are still correct, and only the live chart has a gap
 **Goal:** web and worker agree on queue names, job payload, and Redis key formats.
 **How:** add a queue module (connection + schedule helpers) and a metrics module
 (Redis read/write) to the existing `shared` package, so neither app invents its own
-key format. Also generate the Supabase types file, which is currently empty.
+key format, plus one Prisma client factory so neither app builds its own.
 
 ### 2. Worker foundation (`apps/worker/src/`)
 **Goal:** a worker process that boots, validates its config, and shuts down cleanly.
-**How:** small files for config (fail loudly on missing env), the service-role
-Supabase client, logging, and an entry point that wires them together. The worker app
+**How:** small files for config (fail loudly on missing env), the Prisma client,
+logging, and an entry point that wires them together. The worker app
 has no `src/` at all yet, so this is the skeleton everything else plugs into.
 
 ### 3. Queue and schedulers
@@ -74,7 +78,7 @@ has no `src/` at all yet, so this is the skeleton everything else plugs into.
 **How:** each monitor owns one BullMQ job scheduler keyed by its id. A reconciler
 runs at boot and hourly, comparing the schedulers in Redis against the monitors
 table and fixing any difference. That reconciler is what lets the system survive a
-crash, a flushed Redis, or a row you edited by hand in Supabase.
+crash, a flushed Redis, or a row you edited by hand in the database.
 
 ### 4. Check executor
 **Goal:** turn one URL into a verdict we can trust.
@@ -107,8 +111,9 @@ recorded — a timeout is not a response time, and downtime should read as a gap
 ### 8. Web: monitors and dashboard
 **Goal:** add, edit, pause, and delete monitors; see status, incidents, and charts.
 **How:** server actions for CRUD, each one also updating that monitor's schedule in
-Redis so the two never drift. Reads go through the user's session and RLS. The
-dashboard merges two sources — live status from Redis, history from Postgres.
+Redis so the two never drift. Every read is scoped to the signed-in user's id, since
+nothing in the database enforces that for us. The dashboard merges two sources — live
+status from Redis, history from Postgres.
 
 ### 9. Daily rollup
 **Goal:** keep long-range charts without keeping long-range data.
@@ -136,8 +141,8 @@ Each step leaves something you can run and see.
 - Redis must run `noeviction` (BullMQ requires it), which means at max memory a write
   *errors*. Chart writes must be wrapped and non-fatal — never fail a check over a
   cosmetic chart write.
-- Redis has no RLS. Always confirm through Postgres that a monitor belongs to the
-  user before reading that monitor's Redis keys.
+- Redis keys carry no ownership of their own. Always confirm through Postgres that a
+  monitor belongs to the signed-in user before reading that monitor's Redis keys.
 - A false "down" permanently corrupts uptime, because uptime is derived from
   incidents rather than sampled. That is why the executor retries before declaring.
 - Pausing must resolve any open incident, or a monitor paused mid-outage accrues
